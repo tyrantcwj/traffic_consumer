@@ -46,20 +46,24 @@
 
 ### Docker（推荐）
 
-```bash
-docker pull baitaotao521/traffic_consumer:latest
+```yaml
+version: '3.8'
 
-docker run -d \
-  -p 5001:5001 \
-  -v $HOME/.traffic_consumer_data:/root/.traffic_consumer \
-  --name traffic_consumer \
-  baitaotao521/traffic_consumer:latest
+services:
+  traffic_consumer:
+    image: ghcr.io/tyrantcwj/traffic_consumer:latest
+    container_name: traffic_consumer
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./.traffic_consumer_data:/root/.traffic_consumer
 ```
 
 - 访问 `http://宿主机IP:5001` 使用 Web 控制台。
 - `-v` 将配置与历史写入宿主机，容器删掉也不丢数据。
 - 若需显式指定数据目录，可设置环境变量 `TRAFFIC_CONSUMER_CONFIG_DIR=/root/.traffic_consumer`。
-- CLI 模式：`docker run --rm ... baitaotao521/traffic_consumer:latest --no-gui --limit 5`
+- CLI 模式：`docker run --rm ... ghcr.io/tyrantcwj/traffic_consumer:latest --no-gui --limit 5`
 
 常用命令：
 
