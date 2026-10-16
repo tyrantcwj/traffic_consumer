@@ -126,11 +126,48 @@ function validateName(name: string, errors: ConfigValidationErrors) {
   }
 }
 
+const urlSeparator = /[\s,，;；|、]+/
+
+// 一条输入里可以写多个地址。逗号、中文逗号、分号、竖线、顿号、空白和换行都作为分隔符。
+// 已经带协议的地址只在下一个 http(s) 前面出现分隔符时才切开，避免拆散查询参数里的逗号。
+export function splitURLList(value: string): string[] {
+  const text = value.trim()
+  if (!text) return []
+
+  const matches = [...text.matchAll(/https?:\/\//gi)]
+  if (matches.length > 1) {
+    const parts: string[] = []
+    let segmentStart = 0
+    for (const match of matches) {
+      const start = match.index ?? 0
+      if (start === 0) continue
+      const prefix = text.slice(segmentStart, start)
+      if (!/[\s,，;；|、]$/.test(prefix)) continue
+      const chunk = prefix.replace(/^[\s,，;；|、]+|[\s,，;；|、]+$/g, '')
+      if (chunk) parts.push(chunk)
+      segmentStart = start
+    }
+    const tail = text.slice(segmentStart).replace(/^[\s,，;；|、]+|[\s,，;；|、]+$/g, '')
+    if (tail) parts.push(tail)
+    if (parts.length > 1) return parts
+  }
+
+  if (!/https?:\/\//i.test(text) && urlSeparator.test(text)) {
+    const parts = text.split(urlSeparator).map((part) => part.trim()).filter(Boolean)
+    if (parts.length > 1) return parts
+  }
+
+  if (/[\r\n]/.test(text)) {
+    const parts = text.split(/\r?\n/).map((part) => part.trim()).filter(Boolean)
+    if (parts.length > 1) return parts
+  }
+
+  return [text]
+}
+
 function parseURLs(value: string, mode: ConfigValidationMode, errors: ConfigValidationErrors) {
   const urls: string[] = []
-  for (const rawLine of value.split(/\r?\n/)) {
-    const text = rawLine.trim()
-    if (!text) continue
+  for (const text of splitURLList(value)) {
     if (text.length > limits.urlLength) {
       addError(errors, 'urls', `URL 不能超过 ${limits.urlLength} 个字符。`)
       continue
@@ -417,10 +454,7 @@ export function projectConfigPayload(name: string, config: ConfigPayload, mode: 
 export function snapshotConfigForm(form: ConfigForm): string {
   return JSON.stringify({
     name: form.name.trim(),
-    urls: form.urls
-      .split(/\r?\n/)
-      .map((url) => url.trim())
-      .filter(Boolean),
+    urls: splitURLList(form.urls),
     threads: form.threads ?? null,
     url_strategy: form.url_strategy || 'random',
     limit_speed: form.limit_speed ?? null,

@@ -151,6 +151,9 @@ export function headersToText(headers: ConfigPayload['request_headers']): string
     .join('\n')
 }
 
+// 新建任务默认用常见桌面浏览器标识，避免请求带上 Go 客户端的默认 User-Agent。
+export const defaultUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+
 export function applyConfigToForm(form: ConfigForm, name = '', config: ConfigPayload = { urls: [], threads: 4 }) {
   form.name = name
   form.urls = Array.isArray(config.urls) ? config.urls.join('\n') : ''
@@ -164,7 +167,7 @@ export function applyConfigToForm(form: ConfigForm, name = '', config: ConfigPay
   form.interval = config.interval
   form.auto_remove_failed_url = Boolean(config.auto_remove_failed_url)
   form.auto_start = Boolean(config.auto_start)
-  form.user_agent = config.user_agent || ''
+  form.user_agent = config.user_agent || defaultUserAgent
   form.request_headers = headersToText(config.request_headers)
   form.url_switch_interval = config.url_switch_interval
   form.thread_start_delay = config.thread_start_delay

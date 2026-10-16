@@ -13,6 +13,7 @@ import {
 import {
   applyConfigToForm,
   configNames,
+  defaultUserAgent,
   configWithName,
   emptyDashboard,
   formatDateTime,
@@ -111,7 +112,7 @@ export function useDashboard() {
     interval: undefined,
     auto_remove_failed_url: false,
     auto_start: false,
-    user_agent: '',
+    user_agent: defaultUserAgent,
     request_headers: '',
     url_switch_interval: undefined,
     thread_start_delay: undefined,

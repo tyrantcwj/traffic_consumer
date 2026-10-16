@@ -29,7 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Spinner } from '@/components/ui/spinner'
-import type { ConfigEditorField, ConfigValidationErrors } from '@/domain/configEditor'
+import { splitURLList, type ConfigEditorField, type ConfigValidationErrors } from '@/domain/configEditor'
 import type { ConfigForm, HistoryRecord } from '@/types'
 
 const numberFieldInputClass = 'px-8 text-left'
@@ -88,7 +88,7 @@ function hasError(field: ConfigEditorField) {
   return Boolean(props.errors[field]?.length)
 }
 
-// URL 表格只改变编辑体验，保存/测试前仍由 projectConfigForm 统一拆分空行并校验格式。
+// 表格里一行对应一条地址。粘贴或离开输入框时，把逗号等分隔符写成的多条拆成多行。
 const urlRows = computed({
   get: () => props.form.urls.split(/\r?\n/),
   set: (rows: string[]) => {
@@ -96,10 +96,34 @@ const urlRows = computed({
   },
 })
 
+function replaceURLRow(index: number, parts: string[]) {
+  const nextRows = [...urlRows.value]
+  nextRows.splice(index, 1, ...parts)
+  urlRows.value = nextRows
+}
+
 function updateURLRow(index: number, value: string | number) {
   const nextRows = [...urlRows.value]
   nextRows[index] = String(value)
   urlRows.value = nextRows
+}
+
+function commitURLRow(index: number) {
+  const parts = splitURLList(urlRows.value[index] ?? '')
+  if (parts.length > 1) replaceURLRow(index, parts)
+}
+
+function onURLPaste(index: number, event: ClipboardEvent) {
+  const pasted = event.clipboardData?.getData('text') ?? ''
+  const input = event.target
+  if (!pasted || !(input instanceof HTMLInputElement)) return
+  const start = input.selectionStart ?? input.value.length
+  const end = input.selectionEnd ?? input.value.length
+  const merged = input.value.slice(0, start) + pasted + input.value.slice(end)
+  const parts = splitURLList(merged)
+  if (parts.length <= 1) return
+  event.preventDefault()
+  replaceURLRow(index, parts)
 }
 
 function addURLRow() {
@@ -228,7 +252,9 @@ function handleOpenUpdate(nextOpen: boolean) {
                                 :id="`url-row-input-${index}`"
                                 :model-value="row"
                                 :aria-invalid="hasError('urls') || undefined"
-                                placeholder="https://example.com/file"
+                                placeholder="https://example.com/file，多个用逗号分隔"
+                                @blur="commitURLRow(index)"
+                                @paste="onURLPaste(index, $event)"
                                 @update:model-value="updateURLRow(index, $event)"
                               />
                             </TableCell>
@@ -248,6 +274,7 @@ function handleOpenUpdate(nextOpen: boolean) {
                         </TableBody>
                       </Table>
                     </div>
+                    <FieldDescription>可以一次粘贴多条，用逗号、分号、竖线、顿号或换行分开。</FieldDescription>
                     <FieldError :errors="errors.urls" />
                   </Field>
                 </FieldGroup>
@@ -495,6 +522,7 @@ function handleOpenUpdate(nextOpen: boolean) {
                       v-model="form.user_agent"
                       :aria-invalid="hasError('user_agent') || undefined"
                     />
+                    <FieldDescription>新建任务会带上这条浏览器标识，可以按目标站点修改。</FieldDescription>
                     <FieldError :errors="errors.user_agent" />
                   </Field>
 
